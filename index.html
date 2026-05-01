@@ -3,11 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>服薬記録アプリ</title>
-    <!-- Tailwind CSS (デザインを整えるツール) -->
+    <title>服薬記録アプリ (クラウド同期)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* 印刷時の設定（A4横、不要なボタンを隠す） */
         @media print {
             body * { visibility: hidden; }
             #print-area, #print-area * { visibility: visible; }
@@ -15,148 +13,199 @@
             @page { size: A4 landscape; margin: 10mm; }
             .no-print { display: none !important; }
         }
-        /* アニメーション用 */
         .fade-in { animation: fadeIn 0.3s ease-in; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen">
 
-    <!-- ナビゲーションヘッダー -->
-    <nav class="bg-white border-b sticky top-0 z-10 no-print shadow-sm">
-        <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-            <div class="flex items-center space-x-2">
-                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                <span class="font-bold text-lg text-slate-700">服薬記録アプリ</span>
+    <!-- ログイン画面 -->
+    <div id="login-screen" class="min-h-screen flex items-center justify-center p-4 fade-in">
+        <div class="max-w-md w-full bg-white p-8 rounded-3xl shadow-xl text-center space-y-6 border border-slate-100">
+            <div class="w-20 h-20 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center text-white shadow-lg shadow-blue-200 mb-4">
+                <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             </div>
-            <div class="flex bg-slate-100 p-1 rounded-xl">
-                <button id="tab-record" class="px-4 py-2 rounded-lg text-sm font-bold bg-white shadow text-blue-600 transition-all flex items-center">
-                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    記録
-                </button>
-                <button id="tab-report" class="px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition-all flex items-center">
-                    <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-                    出力ページ
-                </button>
-            </div>
-        </div>
-    </nav>
-
-    <!-- 記録画面 -->
-    <main id="view-record" class="max-w-md mx-auto p-6 mt-6 space-y-8 fade-in">
-        <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 text-center">
-            <h2 class="text-xl font-bold mb-8 text-slate-700">今の時間を記録します</h2>
-            
-            <button id="btn-record" class="w-56 h-56 mx-auto bg-blue-600 hover:bg-blue-700 active:scale-95 active:bg-blue-800 rounded-full flex flex-col items-center justify-center text-white shadow-xl transition-all border-8 border-blue-50">
-                <svg class="w-16 h-16 mb-2 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                <span class="text-3xl font-black tracking-wider">記録</span>
-            </button>
-
-            <div id="status-msg" class="mt-6 flex items-center justify-center text-green-600 font-bold opacity-0 transition-opacity duration-300">
-                <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                保存しました！
-            </div>
-        </div>
-
-        <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 text-left">
-            <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 border-b pb-2">服薬記録</h3>
-            <ul id="log-list" class="space-y-2 max-h-96 overflow-y-auto pr-2">
-                <!-- Javascriptで履歴が入ります -->
-            </ul>
-        </div>
-    </main>
-
-    <!-- 出力画面 -->
-    <main id="view-report" class="hidden max-w-6xl mx-auto p-4 mt-6 space-y-6 fade-in">
-        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4 no-print">
-            <div class="flex items-center space-x-4">
-                <label class="font-bold text-slate-700 text-sm">出力開始日（この日を含む週の月曜）</label>
-                <input type="date" id="input-start-date" class="border border-slate-300 p-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
-            </div>
-            
-            <div class="flex space-x-3">
-                <button id="btn-print" class="flex items-center px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold transition-colors">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-                    印刷（PDF化）
-                </button>
-                <button id="btn-reset" class="flex items-center px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold transition-colors">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M3 2v6h6"/><path d="M3 13a9 9 0 1 0 3-7.7L3 8"/></svg>
-                    出力済みとしてリセット
+            <h1 class="text-2xl font-bold text-slate-800">服薬記録アプリ</h1>
+            <p class="text-slate-500 text-sm leading-relaxed">
+                データはクラウドに安全に保存されます。<br>機種変更しても、同じアカウントでログインすればデータを引き継げます。
+            </p>
+            <div class="space-y-3">
+                <button id="btn-login-google" class="w-full py-3 bg-white border border-slate-200 rounded-xl font-bold flex items-center justify-center hover:bg-slate-50 transition-colors shadow-sm">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" class="w-5 h-5 mr-3" alt="Google">
+                    Googleでログイン
                 </button>
             </div>
         </div>
+    </div>
 
-        <div id="print-area" class="bg-white p-10 border rounded shadow-sm overflow-x-auto">
-            <!-- Javascriptでカレンダー表が生成されます -->
-        </div>
-    </main>
+    <!-- アプリメイン画面 -->
+    <div id="app-screen" class="hidden">
+        <nav class="bg-white border-b sticky top-0 z-10 no-print shadow-sm">
+            <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span class="font-bold text-lg text-slate-700 hidden sm:block">服薬記録</span>
+                </div>
+                <div class="flex bg-slate-100 p-1 rounded-xl">
+                    <button id="tab-record" class="px-4 py-2 rounded-lg text-sm font-bold bg-white shadow text-blue-600 transition-all flex items-center">記録</button>
+                    <button id="tab-report" class="px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition-all flex items-center">出力</button>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span id="user-name" class="text-xs font-bold text-slate-500 hidden sm:block"></span>
+                    <button id="btn-logout" class="p-2 text-slate-400 hover:text-red-500 transition-colors" title="ログアウト">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    </button>
+                </div>
+            </div>
+        </nav>
 
-    <script>
-        // --- データの読み込み (ブラウザの LocalStorage から) ---
-        let logs = JSON.parse(localStorage.getItem('medLog_data') || '[]');
-        let lastResetDate = localStorage.getItem('medLog_resetDate') || '';
+        <!-- 記録画面 -->
+        <main id="view-record" class="max-w-md mx-auto p-6 mt-6 space-y-8 fade-in">
+            <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 text-center">
+                <h2 class="text-xl font-bold mb-8 text-slate-700">今の時間を記録します</h2>
+                <button id="btn-record" class="w-56 h-56 mx-auto bg-blue-600 hover:bg-blue-700 active:scale-95 rounded-full flex flex-col items-center justify-center text-white shadow-xl transition-all border-8 border-blue-50">
+                    <svg class="w-16 h-16 mb-2 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span class="text-3xl font-black tracking-wider">記録</span>
+                </button>
+                <div id="status-msg" class="mt-6 flex items-center justify-center text-green-600 font-bold opacity-0 transition-opacity duration-300">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    クラウドに保存しました！
+                </div>
+            </div>
 
-        // --- HTML要素の取得 ---
-        const tabRecord = document.getElementById('tab-record');
-        const tabReport = document.getElementById('tab-report');
-        const viewRecord = document.getElementById('view-record');
-        const viewReport = document.getElementById('view-report');
-        const btnRecord = document.getElementById('btn-record');
-        const logList = document.getElementById('log-list');
-        const statusMsg = document.getElementById('status-msg');
-        const inputStartDate = document.getElementById('input-start-date');
-        const btnPrint = document.getElementById('btn-print');
-        const btnReset = document.getElementById('btn-reset');
-        const printArea = document.getElementById('print-area');
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 text-left">
+                <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 border-b pb-2">服薬記録</h3>
+                <ul id="log-list" class="space-y-2 max-h-96 overflow-y-auto pr-2">
+                    <!-- Javascriptで履歴が入ります -->
+                </ul>
+            </div>
+        </main>
 
-        // --- 初期設定 ---
-        function init() {
-            // カレンダー開始日の初期値設定
-            if (lastResetDate) {
-                // 前回リセット日があれば、その翌日をセット
-                let nextDate = new Date(lastResetDate);
-                nextDate.setDate(nextDate.getDate() + 1);
-                inputStartDate.value = nextDate.toISOString().split('T')[0];
+        <!-- 出力画面 -->
+        <main id="view-report" class="hidden max-w-6xl mx-auto p-4 mt-6 space-y-6 fade-in">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4 no-print">
+                <div class="flex items-center space-x-4">
+                    <label class="font-bold text-slate-700 text-sm">出力開始日（この日を含む週の月曜）</label>
+                    <input type="date" id="input-start-date" class="border border-slate-300 p-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="flex space-x-3">
+                    <button id="btn-print" class="flex items-center px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold transition-colors">
+                        印刷（PDF化）
+                    </button>
+                    <button id="btn-reset" class="flex items-center px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold transition-colors">
+                        出力済みとしてリセット
+                    </button>
+                </div>
+            </div>
+            <div id="print-area" class="bg-white p-10 border rounded shadow-sm overflow-x-auto">
+                <!-- Javascriptでカレンダー表が生成されます -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Firebase SDKの読み込みとロジック -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // 画像から取得したあなたのFirebaseプロジェクト設定
+        const firebaseConfig = {
+            apiKey: "AIzaSyBJXEmptC0MztleKnYDRnxkP7_SASyWS88",
+            authDomain: "kiroku-f9d08.firebaseapp.com",
+            projectId: "kiroku-f9d08",
+            storageBucket: "kiroku-f9d08.firebasestorage.app",
+            messagingSenderId: "43680535697",
+            appId: "1:43680535697:web:e9e0c501a980e86fdc1b30"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const googleProvider = new GoogleAuthProvider();
+
+        const myAppId = 'medlog-app-custom'; // 保存先を分けるためのID
+
+        let currentUser = null;
+        let logs = [];
+        let unsubLogs = null;
+        let unsubSettings = null;
+
+        // --- 認証状態の監視 ---
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // ログイン成功時
+                currentUser = user;
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('app-screen').classList.remove('hidden');
+                document.getElementById('user-name').innerText = user.displayName ? `${user.displayName} さん` : 'ユーザー';
+                loadData();
             } else {
-                // なければ今日をセット
-                inputStartDate.value = new Date().toISOString().split('T')[0];
+                // ログアウト時
+                currentUser = null;
+                document.getElementById('login-screen').classList.remove('hidden');
+                document.getElementById('app-screen').classList.add('hidden');
+                if (unsubLogs) unsubLogs();
+                if (unsubSettings) unsubSettings();
             }
-            updateLogList();
-            renderCalendar();
+        });
+
+        // ログイン・ログアウトボタンの処理
+        const handleLogin = (provider) => {
+            signInWithPopup(auth, provider).catch(error => {
+                console.error("Login failed", error);
+                alert("ログイン処理がキャンセルされたか、失敗しました。");
+            });
+        };
+
+        document.getElementById('btn-login-google').addEventListener('click', () => handleLogin(googleProvider));
+
+        document.getElementById('btn-logout').addEventListener('click', () => {
+            if(confirm('ログアウトしますか？')) signOut(auth);
+        });
+
+        // --- データの読み込み（クラウドからリアルタイム取得） ---
+        function loadData() {
+            if (!currentUser) return;
+            const uid = currentUser.uid;
+
+            // 1. 記録データの取得
+            const logsRef = collection(db, 'artifacts', myAppId, 'users', uid, 'logs');
+            unsubLogs = onSnapshot(logsRef, (snapshot) => {
+                logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                logs.sort((a, b) => a.timestamp - b.timestamp); // 古い順にソート
+                updateLogList();
+                renderCalendar();
+            }, (error) => console.error("データ取得エラー:", error));
+
+            // 2. 設定データ（次回開始日）の取得
+            const settingsRef = doc(db, 'artifacts', myAppId, 'users', uid, 'settings', 'report_config');
+            unsubSettings = onSnapshot(settingsRef, (docSnap) => {
+                if (docSnap.exists() && docSnap.data().lastResetDate) {
+                    let nextDate = new Date(docSnap.data().lastResetDate);
+                    nextDate.setDate(nextDate.getDate() + 1);
+                    document.getElementById('input-start-date').value = nextDate.toISOString().split('T')[0];
+                } else {
+                    document.getElementById('input-start-date').value = new Date().toISOString().split('T')[0];
+                }
+                renderCalendar();
+            }, (error) => console.error("設定取得エラー:", error));
         }
 
-        // --- タブ切り替え処理 ---
-        tabRecord.addEventListener('click', () => {
-            viewRecord.classList.remove('hidden');
-            viewReport.classList.add('hidden');
-            tabRecord.className = "px-4 py-2 rounded-lg text-sm font-bold bg-white shadow text-blue-600 transition-all flex items-center";
-            tabReport.className = "px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition-all flex items-center";
-        });
-
-        tabReport.addEventListener('click', () => {
-            viewReport.classList.remove('hidden');
-            viewRecord.classList.add('hidden');
-            tabReport.className = "px-4 py-2 rounded-lg text-sm font-bold bg-white shadow text-blue-600 transition-all flex items-center";
-            tabRecord.className = "px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition-all flex items-center";
-            renderCalendar(); // タブを開いた時にカレンダーを再描画
-        });
-
-        // --- 記録処理 ---
-        btnRecord.addEventListener('click', () => {
+        // --- 記録ボタン処理 ---
+        document.getElementById('btn-record').addEventListener('click', async () => {
+            if (!currentUser) return;
             const now = new Date();
-            // 新しい記録を配列に追加
-            logs.push({
+            
+            // クラウドに保存
+            const logsRef = collection(db, 'artifacts', myAppId, 'users', currentUser.uid, 'logs');
+            await addDoc(logsRef, {
                 timestamp: now.getTime(),
                 dateStr: now.toISOString().split('T')[0]
             });
-            // LocalStorageに保存
-            localStorage.setItem('medLog_data', JSON.stringify(logs));
-            
-            // 画面更新
-            updateLogList();
-            renderCalendar();
 
-            // 「保存しました」メッセージのアニメーション
+            // メッセージ表示
+            const statusMsg = document.getElementById('status-msg');
             statusMsg.classList.remove('opacity-0');
             statusMsg.classList.add('opacity-100', 'animate-bounce');
             setTimeout(() => {
@@ -165,22 +214,60 @@
             }, 3000);
         });
 
-        // 履歴リストの表示更新
+        // --- リセットボタン処理 ---
+        document.getElementById('btn-reset').addEventListener('click', async () => {
+            if (!currentUser) return;
+            if(!confirm('この出力期間を完了とし、次回開始日を更新しますか？\n（記録データは消えません）')) return;
+            
+            const startStr = document.getElementById('input-start-date').value;
+            const start = new Date(startStr);
+            const day = start.getDay();
+            const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+            const lastDay = new Date(new Date(start).setDate(diff + 27));
+
+            const lastDayStr = lastDay.toISOString().split('T')[0];
+            const settingsRef = doc(db, 'artifacts', myAppId, 'users', currentUser.uid, 'settings', 'report_config');
+            
+            // クラウドに設定を保存
+            await setDoc(settingsRef, { lastResetDate: lastDayStr }, { merge: true });
+            alert('次回開始日をクラウドに保存しました。');
+        });
+
+        // --- 画面UI操作 ---
+        const tabRecord = document.getElementById('tab-record');
+        const tabReport = document.getElementById('tab-report');
+        const viewRecord = document.getElementById('view-record');
+        const viewReport = document.getElementById('view-report');
+        
+        tabRecord.addEventListener('click', () => {
+            viewRecord.classList.remove('hidden'); viewReport.classList.add('hidden');
+            tabRecord.className = "px-4 py-2 rounded-lg text-sm font-bold bg-white shadow text-blue-600 transition-all flex items-center";
+            tabReport.className = "px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition-all flex items-center";
+        });
+
+        tabReport.addEventListener('click', () => {
+            viewReport.classList.remove('hidden'); viewRecord.classList.add('hidden');
+            tabReport.className = "px-4 py-2 rounded-lg text-sm font-bold bg-white shadow text-blue-600 transition-all flex items-center";
+            tabRecord.className = "px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition-all flex items-center";
+            renderCalendar();
+        });
+
+        document.getElementById('input-start-date').addEventListener('change', renderCalendar);
+        document.getElementById('btn-print').addEventListener('click', () => window.print());
+
         function updateLogList() {
+            const logList = document.getElementById('log-list');
             if (logs.length === 0) {
                 logList.innerHTML = '<li class="text-slate-400 text-sm text-center py-4">記録がありません</li>';
                 return;
             }
-            
-            // すべての記録を新しい順に表示
+
             const allLogs = [...logs].reverse();
             const todayStr = new Date().toISOString().split('T')[0];
 
             logList.innerHTML = allLogs.map(log => {
                 const d = new Date(log.timestamp);
                 const isToday = log.dateStr === todayStr;
-                
-                // 当日の記録は青系の背景でハイライト
                 const bgClass = isToday ? 'bg-blue-100 border-blue-300 shadow-sm' : 'bg-slate-50 border-slate-100';
                 const dateTextClass = isToday ? 'text-blue-800 font-bold' : 'text-slate-600 font-medium';
 
@@ -193,44 +280,15 @@
             }).join('');
         }
 
-        // --- 出力ページ関連処理 ---
-        inputStartDate.addEventListener('change', renderCalendar);
-        
-        btnPrint.addEventListener('click', () => {
-            window.print();
-        });
-
-        btnReset.addEventListener('click', () => {
-            if(confirm('この出力期間を完了とし、次回開始日を更新しますか？\n（記録データは消えません）')) {
-                // 現在表示しているカレンダーの最終日（28日目）を計算
-                const startStr = inputStartDate.value;
-                const start = new Date(startStr);
-                const day = start.getDay();
-                const diff = start.getDate() - day + (day === 0 ? -6 : 1);
-                const lastDay = new Date(new Date(start).setDate(diff + 27));
-                
-                // 次回リセット日として保存
-                const lastDayStr = lastDay.toISOString().split('T')[0];
-                localStorage.setItem('medLog_resetDate', lastDayStr);
-                lastResetDate = lastDayStr;
-                
-                alert('次回開始日を更新しました。');
-                init(); // 画面をリロード
-            }
-        });
-
-        // 病院様式カレンダーの生成
         function renderCalendar() {
-            const startStr = inputStartDate.value;
+            const startStr = document.getElementById('input-start-date').value;
             if (!startStr) return;
             
-            // 指定日を含む週の月曜日を計算
             const start = new Date(startStr);
             const day = start.getDay();
             const diff = start.getDate() - day + (day === 0 ? -6 : 1);
             const monday = new Date(new Date(start).setDate(diff));
 
-            // 表示用の月と年を計算（最初の日と最後の日）
             const day28 = new Date(monday);
             day28.setDate(monday.getDate() + 27);
             
@@ -238,12 +296,10 @@
             const m2 = day28.getMonth() + 1;
             const monthDisp = m1 === m2 ? m1 : `${m1}-${m2}`;
             const yearDisp = monday.getFullYear();
-
             const weekdays = ['月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日', '日曜日'];
 
             let html = `
                 <div class="min-w-[900px] text-black">
-                    <!-- ヘッダー -->
                     <div class="flex items-end mb-6 border-b-2 border-black pb-4 font-serif">
                         <div class="flex items-center space-x-8">
                             <div class="text-2xl font-bold tracking-widest">GILEAD</div>
@@ -253,8 +309,6 @@
                             </div>
                         </div>
                     </div>
-
-                    <!-- テーブル -->
                     <table class="w-full border-collapse border-2 border-black">
                         <thead>
                             <tr class="bg-black text-white">
@@ -264,7 +318,6 @@
                         <tbody>
             `;
 
-            // 4週間（28日）分のループ
             for (let w = 0; w < 4; w++) {
                 html += '<tr>';
                 for (let d = 0; d < 7; d++) {
@@ -272,11 +325,9 @@
                     currentDate.setDate(monday.getDate() + (w * 7 + d));
                     const dateStr = currentDate.toISOString().split('T')[0];
                     
-                    // その日のログを抽出
                     const dayLogs = logs.filter(l => l.dateStr === dateStr);
                     const timeStrings = dayLogs.map(l => new Date(l.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})).join(', ');
-                    
-                    const isWeekend = d === 5 || d === 6; // 土日
+                    const isWeekend = d === 5 || d === 6;
                     
                     html += `
                         <td class="border border-black p-0 h-[110px] align-top ${isWeekend ? 'bg-gray-100' : 'bg-white'}">
@@ -300,19 +351,9 @@
                 }
                 html += '</tr>';
             }
-
-            html += `
-                        </tbody>
-                    </table>
-                </div>
-            `;
-
-            printArea.innerHTML = html;
+            html += '</tbody></table></div>';
+            document.getElementById('print-area').innerHTML = html;
         }
-
-        // 実行
-        init();
-
     </script>
 </body>
 </html>

@@ -135,10 +135,7 @@
                     <input type="date" id="input-start-date" onchange="window.renderCalendar()" class="border border-slate-300 p-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div class="flex space-x-3">
-                    <!-- ★修正：直接 window.handlePrint() を呼び出す -->
-                    <button onclick="window.handlePrint()" class="px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold transition-colors">印刷する</button>
-                    <!-- ★修正：直接 window.handleReset() を呼び出す -->
-                    <button onclick="window.handleReset()" class="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold transition-colors">リセット</button>
+                    <button onclick="window.handleReset()" class="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold transition-colors">全データを消去</button>
                 </div>
             </div>
             
@@ -154,7 +151,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, collection, addDoc, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, setDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBJXeMptC0MztleKnYDRnxkP7_SASyWS88",
@@ -209,11 +206,6 @@
             }
         };
 
-        window.handlePrint = () => {
-            // 確認メッセージ（許可）を廃止し、直接ブラウザの印刷画面を呼び出します
-            window.print();
-        };
-
         window.switchTab = (tab) => {
             const tabRecord = document.getElementById('tab-record');
             const tabReport = document.getElementById('tab-report');
@@ -264,19 +256,28 @@
 
         window.handleReset = async () => {
             if (!currentUser) return;
-            if(!confirm('この出力期間を完了とし、次回開始日を更新しますか？\n（記録データは消えません）')) return;
+            if(!confirm('本当にすべての記録データを完全に消去しますか？\n（この操作は取り消せません！）')) return;
+            
             try {
-                const startStr = document.getElementById('input-start-date').value;
-                const start = new Date(startStr);
-                const day = start.getDay();
-                const diff = start.getDate() - day + (day === 0 ? -6 : 1);
-                const lastDay = new Date(new Date(start).setDate(diff + 27));
-                const lastDayStr = lastDay.toISOString().split('T')[0];
+                // Firebaseから全ての記録を削除する処理
+                const logsRef = collection(db, 'artifacts', myAppId, 'users', currentUser.uid, 'logs');
+                const querySnapshot = await getDocs(logsRef);
+                
+                const deletePromises = [];
+                querySnapshot.forEach((document) => {
+                    deletePromises.push(deleteDoc(doc(db, 'artifacts', myAppId, 'users', currentUser.uid, 'logs', document.id)));
+                });
+                
+                await Promise.all(deletePromises);
+                
+                // 設定情報もリセットする
                 const settingsRef = doc(db, 'artifacts', myAppId, 'users', currentUser.uid, 'settings', 'report_config');
-                await setDoc(settingsRef, { lastResetDate: lastDayStr }, { merge: true });
-                alert('次回開始日を保存しました。');
+                await setDoc(settingsRef, { lastResetDate: null }, { merge: true });
+                document.getElementById('input-start-date').value = new Date().toISOString().split('T')[0];
+
+                alert('すべてのデータを消去しました。');
             } catch (error) {
-                alert("保存エラー: " + error.message);
+                alert("消去エラー: " + error.message);
             }
         };
 

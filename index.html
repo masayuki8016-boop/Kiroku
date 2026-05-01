@@ -210,12 +210,8 @@
         };
 
         window.handlePrint = () => {
-            // 印刷ボタンはここだけを通る
-            if (confirm('記録表を印刷（またはPDFとして保存）しますか？')) {
-                setTimeout(() => {
-                    window.print();
-                }, 100);
-            }
+            // 確認メッセージ（許可）を廃止し、直接ブラウザの印刷画面を呼び出します
+            window.print();
         };
 
         window.switchTab = (tab) => {

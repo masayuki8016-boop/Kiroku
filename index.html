@@ -8,44 +8,54 @@
     <style>
         /* --- 画面表示時（PC）のカレンダーの比率設定 --- */
         @media screen {
-            #print-area {
+            #print-wrapper {
                 width: 100%;
-                max-width: 297mm; /* A4横サイズ */
-                aspect-ratio: 297 / 210;
+                overflow-x: auto;
+                background-color: #f1f5f9;
+                padding: 20px 0;
+            }
+            /* 画面上でもA4横のサイズ（297mm x 210mm）を再現する */
+            #print-area {
+                width: 297mm;
+                height: 210mm;
+                padding: 10mm;
+                box-sizing: border-box;
                 margin: 0 auto;
+                background-color: white;
+                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
             }
         }
 
-        /* --- 印刷時（PDF出力）の厳密なレイアウト設定 --- */
+        /* --- 印刷時（PDF出力）の絶対安定レイアウト設定 --- */
         @media print {
-            @page { size: A4 landscape; margin: 0; }
-            body { background-color: white; margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            
-            /* 印刷したくない要素を隠す */
-            .no-print, nav, #login-screen, #view-record { display: none !important; }
-            
-            /* 印刷する要素を全画面に広げる */
-            #app-screen, #view-report, .print-wrapper {
-                display: block !important;
-                margin: 0 !important;
-                padding: 0 !important;
-                border: none !important;
-                box-shadow: none !important;
-                max-width: none !important;
-                width: 100% !important;
+            @page { 
+                size: A4 landscape; 
+                margin: 0; /* ブラウザ標準の余白を消す */
             }
+            body { margin: 0; padding: 0; background-color: white; }
+            /* 印刷したくないものをすべて隠す安定方式 */
+            body * { visibility: hidden; }
+            #print-area, #print-area * { visibility: visible; }
             
-            /* 余白1cmをとってA4横サイズに固定 */
-            #print-area {
-                position: absolute;
-                left: 0;
-                top: 0;
-                width: 297mm !important;
-                height: 209mm !important;
-                padding: 10mm !important;
-                margin: 0 !important;
+            /* カレンダーを左上に強制配置し、A4横サイズにガッチリ固定 */
+            #print-area { 
+                position: absolute; 
+                left: 0; 
+                top: 0; 
+                width: 297mm !important; 
+                height: 209mm !important; /* A4の高さギリギリ */
+                padding: 10mm !important; /* ここで1cmの余白を作る */
                 box-sizing: border-box;
+                margin: 0 !important; 
+                border: none !important;
                 background-color: white !important;
+            }
+            .no-print { display: none !important; }
+            
+            /* 背景の黒帯やグレーを消さない設定 */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
         }
 
@@ -66,7 +76,8 @@
                 データはクラウドに安全に保存されます。<br>機種変更しても、同じアカウントでログインすればデータを引き継げます。
             </p>
             <div class="space-y-3">
-                <button id="btn-login-google" class="w-full py-4 bg-white border-2 border-slate-200 rounded-2xl font-bold flex items-center justify-center hover:bg-slate-50 transition-colors shadow-sm">
+                <!-- ★修正：直接 window.handleLogin() を呼び出す -->
+                <button onclick="window.handleLogin()" class="w-full py-4 bg-white border-2 border-slate-200 rounded-2xl font-bold flex items-center justify-center hover:bg-slate-50 transition-colors shadow-sm">
                     <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" class="w-5 h-5 mr-3" alt="Google">
                     Googleでログイン
                 </button>
@@ -83,12 +94,14 @@
                     <span class="font-bold text-lg text-slate-700 hidden sm:block">服薬記録</span>
                 </div>
                 <div class="flex bg-slate-100 p-1 rounded-xl">
-                    <button id="tab-record" class="px-4 py-2 rounded-lg text-sm font-bold bg-white shadow text-blue-600 transition-all flex items-center">記録</button>
-                    <button id="tab-report" class="px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition-all flex items-center">出力</button>
+                    <!-- ★修正：直接 window.switchTab() を呼び出す -->
+                    <button id="tab-record" onclick="window.switchTab('record')" class="px-4 py-2 rounded-lg text-sm font-bold bg-white shadow text-blue-600 transition-all flex items-center">記録</button>
+                    <button id="tab-report" onclick="window.switchTab('report')" class="px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition-all flex items-center">出力</button>
                 </div>
                 <div class="flex items-center space-x-3">
                     <span id="user-name" class="text-xs font-bold text-slate-500 hidden sm:block"></span>
-                    <button id="btn-logout" class="p-2 text-slate-400 hover:text-red-500 transition-colors" title="ログアウト">
+                    <!-- ★修正：直接 window.handleLogout() を呼び出す -->
+                    <button onclick="window.handleLogout()" class="p-2 text-slate-400 hover:text-red-500 transition-colors" title="ログアウト">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                     </button>
                 </div>
@@ -98,7 +111,8 @@
         <main id="view-record" class="max-w-md mx-auto p-6 mt-6 space-y-8 fade-in">
             <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 text-center">
                 <h2 class="text-xl font-bold mb-8 text-slate-700">今の時間を記録します</h2>
-                <button id="btn-record" class="w-56 h-56 mx-auto bg-blue-600 hover:bg-blue-700 active:scale-95 rounded-full flex flex-col items-center justify-center text-white shadow-xl transition-all border-8 border-blue-50">
+                <!-- ★修正：直接 window.handleRecord() を呼び出す -->
+                <button id="btn-record" onclick="window.handleRecord()" class="w-56 h-56 mx-auto bg-blue-600 hover:bg-blue-700 active:scale-95 rounded-full flex flex-col items-center justify-center text-white shadow-xl transition-all border-8 border-blue-50">
                     <svg class="w-16 h-16 mb-2 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
                     <span id="btn-record-text" class="text-3xl font-black tracking-wider">記録</span>
                 </button>
@@ -117,18 +131,21 @@
             <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4 no-print">
                 <div class="flex items-center space-x-4">
                     <label class="font-bold text-slate-700 text-sm">出力開始日</label>
-                    <input type="date" id="input-start-date" class="border border-slate-300 p-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                    <!-- ★修正：日付を変えたらカレンダーを更新 -->
+                    <input type="date" id="input-start-date" onchange="window.renderCalendar()" class="border border-slate-300 p-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div class="flex space-x-3">
-                    <button id="btn-print" class="px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold transition-colors">印刷する</button>
-                    <button id="btn-reset" class="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold transition-colors">リセット</button>
+                    <!-- ★修正：直接 window.handlePrint() を呼び出す -->
+                    <button onclick="window.handlePrint()" class="px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold transition-colors">印刷する</button>
+                    <!-- ★修正：直接 window.handleReset() を呼び出す -->
+                    <button onclick="window.handleReset()" class="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold transition-colors">リセット</button>
                 </div>
             </div>
             
-            <!-- カレンダー表示枠 -->
-            <div class="bg-white border-2 border-slate-200 rounded-lg shadow-sm print-wrapper">
+            <div id="print-wrapper" class="bg-white border-2 border-slate-200 rounded-lg shadow-sm">
                 <div class="p-2 bg-slate-100 border-b border-slate-200 text-center text-xs font-bold text-slate-500 no-print">▼ PCでの印刷プレビュー（A4横比率） ▼</div>
-                <div id="print-area" class="bg-white p-4 sm:p-8">
+                <div id="print-area" class="bg-white p-4 sm:p-8 text-black">
+                    <!-- カレンダーが入ります -->
                 </div>
             </div>
         </main>
@@ -175,58 +192,51 @@
             }
         });
 
-        // ログイン
-        document.getElementById('btn-login-google').addEventListener('click', () => {
+        // ==========================================
+        // ★ 各ボタンの動作を「絶対に混ざらない」ように独立した関数として定義
+        // ==========================================
+
+        window.handleLogin = () => {
             signInWithPopup(auth, googleProvider).catch(error => {
                 alert("ログインエラーが発生しました。\n" + error.message);
             });
-        });
+        };
 
-        // ログアウト（他のボタンと絶対に干渉しないように独立して記述）
-        document.getElementById('btn-logout').addEventListener('click', (e) => {
-            e.preventDefault();
+        window.handleLogout = () => {
+            // ログアウトボタンはここだけを通る
             if (confirm('ログアウトしますか？')) {
                 signOut(auth);
             }
-        });
+        };
 
-        // 印刷（押したときのみ確認メッセージを出す）
-        document.getElementById('btn-print').addEventListener('click', (e) => {
-            e.preventDefault();
+        window.handlePrint = () => {
+            // 印刷ボタンはここだけを通る
             if (confirm('記録表を印刷（またはPDFとして保存）しますか？')) {
                 setTimeout(() => {
                     window.print();
-                }, 300);
+                }, 100);
             }
-        });
+        };
 
-        function loadData() {
-            if (!currentUser) return;
-            const uid = currentUser.uid;
+        window.switchTab = (tab) => {
+            const tabRecord = document.getElementById('tab-record');
+            const tabReport = document.getElementById('tab-report');
+            const viewRecord = document.getElementById('view-record');
+            const viewReport = document.getElementById('view-report');
             
-            const logsRef = collection(db, 'artifacts', myAppId, 'users', uid, 'logs');
-            unsubLogs = onSnapshot(logsRef, (snapshot) => {
-                logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                logs.sort((a, b) => a.timestamp - b.timestamp);
-                updateLogList();
-                renderCalendar();
-            });
+            if (tab === 'record') {
+                viewRecord.classList.remove('hidden'); viewReport.classList.add('hidden');
+                tabRecord.className = "px-4 py-2 rounded-lg text-sm font-bold bg-white shadow text-blue-600 transition-all flex items-center";
+                tabReport.className = "px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition-all flex items-center";
+            } else {
+                viewReport.classList.remove('hidden'); viewRecord.classList.add('hidden');
+                tabReport.className = "px-4 py-2 rounded-lg text-sm font-bold bg-white shadow text-blue-600 transition-all flex items-center";
+                tabRecord.className = "px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition-all flex items-center";
+                window.renderCalendar();
+            }
+        };
 
-            const settingsRef = doc(db, 'artifacts', myAppId, 'users', uid, 'settings', 'report_config');
-            unsubSettings = onSnapshot(settingsRef, (docSnap) => {
-                if (docSnap.exists() && docSnap.data().lastResetDate) {
-                    let nextDate = new Date(docSnap.data().lastResetDate);
-                    nextDate.setDate(nextDate.getDate() + 1);
-                    document.getElementById('input-start-date').value = nextDate.toISOString().split('T')[0];
-                } else {
-                    document.getElementById('input-start-date').value = new Date().toISOString().split('T')[0];
-                }
-                renderCalendar();
-            });
-        }
-
-        // 記録ボタン
-        document.getElementById('btn-record').addEventListener('click', async () => {
+        window.handleRecord = async () => {
             if (!currentUser) return;
             const btn = document.getElementById('btn-record');
             const btnText = document.getElementById('btn-record-text');
@@ -239,10 +249,7 @@
             try {
                 const now = new Date();
                 const logsRef = collection(db, 'artifacts', myAppId, 'users', currentUser.uid, 'logs');
-                await addDoc(logsRef, {
-                    timestamp: now.getTime(),
-                    dateStr: now.toISOString().split('T')[0]
-                });
+                await addDoc(logsRef, { timestamp: now.getTime(), dateStr: now.toISOString().split('T')[0] });
                 
                 statusMsg.innerHTML = '<svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>クラウドに保存しました！';
                 statusMsg.className = 'mt-6 flex items-center justify-center font-bold text-green-600 opacity-100 animate-bounce transition-opacity duration-300';
@@ -257,10 +264,9 @@
                 btn.classList.remove('opacity-50');
                 btnText.innerText = '記録';
             }
-        });
+        };
 
-        // リセットボタン
-        document.getElementById('btn-reset').addEventListener('click', async () => {
+        window.handleReset = async () => {
             if (!currentUser) return;
             if(!confirm('この出力期間を完了とし、次回開始日を更新しますか？\n（記録データは消えません）')) return;
             try {
@@ -276,29 +282,37 @@
             } catch (error) {
                 alert("保存エラー: " + error.message);
             }
-        });
+        };
 
-        // タブ切り替え
-        const tabRecord = document.getElementById('tab-record');
-        const tabReport = document.getElementById('tab-report');
-        const viewRecord = document.getElementById('view-record');
-        const viewReport = document.getElementById('view-report');
-        
-        tabRecord.addEventListener('click', () => {
-            viewRecord.classList.remove('hidden'); viewReport.classList.add('hidden');
-            tabRecord.className = "px-4 py-2 rounded-lg text-sm font-bold bg-white shadow text-blue-600 transition-all flex items-center";
-            tabReport.className = "px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition-all flex items-center";
-        });
+        // ==========================================
+        // データの読み込みと描画
+        // ==========================================
 
-        tabReport.addEventListener('click', () => {
-            viewReport.classList.remove('hidden'); viewRecord.classList.add('hidden');
-            tabReport.className = "px-4 py-2 rounded-lg text-sm font-bold bg-white shadow text-blue-600 transition-all flex items-center";
-            tabRecord.className = "px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition-all flex items-center";
-            renderCalendar();
-        });
+        function loadData() {
+            if (!currentUser) return;
+            const uid = currentUser.uid;
+            
+            const logsRef = collection(db, 'artifacts', myAppId, 'users', uid, 'logs');
+            unsubLogs = onSnapshot(logsRef, (snapshot) => {
+                logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                logs.sort((a, b) => a.timestamp - b.timestamp);
+                updateLogList();
+                window.renderCalendar();
+            });
 
-        document.getElementById('input-start-date').addEventListener('change', renderCalendar);
-        
+            const settingsRef = doc(db, 'artifacts', myAppId, 'users', uid, 'settings', 'report_config');
+            unsubSettings = onSnapshot(settingsRef, (docSnap) => {
+                if (docSnap.exists() && docSnap.data().lastResetDate) {
+                    let nextDate = new Date(docSnap.data().lastResetDate);
+                    nextDate.setDate(nextDate.getDate() + 1);
+                    document.getElementById('input-start-date').value = nextDate.toISOString().split('T')[0];
+                } else {
+                    document.getElementById('input-start-date').value = new Date().toISOString().split('T')[0];
+                }
+                window.renderCalendar();
+            });
+        }
+
         function updateLogList() {
             const logList = document.getElementById('log-list');
             if (logs.length === 0) {
@@ -321,8 +335,8 @@
             }).join('');
         }
 
-        function renderCalendar() {
-            const startStr = document.getElementById('input-start-date').value;
+        window.renderCalendar = () => {
+            const startStr = document.getElementById('input-start-date')?.value;
             if (!startStr) return;
             const start = new Date(startStr);
             const day = start.getDay();
@@ -338,7 +352,7 @@
             const weekdays = ['月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日', '日曜日'];
 
             let html = `
-                <div class="w-full h-full flex flex-col text-black bg-white">
+                <div style="width: 100%; height: 100%; display: flex; flex-direction: column;">
                     <div class="flex items-end mb-2 border-b-2 border-black pb-2 font-serif shrink-0">
                         <div class="flex items-center space-x-8">
                             <div class="text-2xl font-bold tracking-widest uppercase italic">GILEAD</div>
@@ -348,9 +362,9 @@
                             </div>
                         </div>
                     </div>
-                    <table class="w-full flex-grow border-collapse border-2 border-black" style="table-layout: fixed; height: 100%;">
+                    <table class="w-full border-collapse border-2 border-black flex-grow" style="table-layout: fixed;">
                         <thead>
-                            <tr class="bg-black text-white shrink-0" style="height: 30px;">
+                            <tr class="bg-black text-white shrink-0" style="height: 24px;">
                                 ${weekdays.map(w => `<th class="border border-black py-1 px-2 font-normal text-center text-sm">${w}</th>`).join('')}
                             </tr>
                         </thead>
@@ -358,7 +372,7 @@
             `;
 
             for (let w = 0; w < 4; w++) {
-                html += '<tr>';
+                html += '<tr style="height: 25%;">';
                 for (let d = 0; d < 7; d++) {
                     const currentDate = new Date(monday);
                     currentDate.setDate(monday.getDate() + (w * 7 + d));
@@ -368,8 +382,8 @@
                     const isWeekend = d === 5 || d === 6;
                     
                     html += `
-                        <td class="border border-black p-0 align-top ${isWeekend ? 'bg-gray-100' : 'bg-white'}" style="height: 25%;">
-                            <div class="p-1 h-full flex flex-col">
+                        <td class="border border-black p-0 align-top ${isWeekend ? 'bg-gray-100' : 'bg-white'}">
+                            <div class="p-1 h-full flex flex-col justify-between">
                                 <div class="font-bold mb-1 text-[10px] border-b border-dotted border-gray-400 pb-0.5">1日服用量</div>
                                 <div class="flex-grow flex flex-col justify-end space-y-1">
                                     <div class="flex items-end">
@@ -391,7 +405,7 @@
             }
             html += '</tbody></table></div>';
             document.getElementById('print-area').innerHTML = html;
-        }
+        };
     </script>
 </body>
 </html>

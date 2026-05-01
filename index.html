@@ -6,13 +6,50 @@
     <title>服薬記録アプリ (クラウド同期)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* --- 画面表示時（PC）のカレンダーの比率設定 --- */
+        @media screen {
+            #print-area {
+                width: 100%;
+                max-width: 297mm; /* A4横サイズ */
+                aspect-ratio: 297 / 210; /* A4の縦横比に固定 */
+                margin: 0 auto;
+            }
+        }
+
+        /* --- 印刷時（PDF出力）の厳密なレイアウト設定 --- */
         @media print {
+            /* ページ全体の設定（A4横、余白ゼロ） */
+            @page { size: A4 landscape; margin: 0; }
+            body { background-color: white; margin: 0; padding: 0; }
             body * { visibility: hidden; }
+            
+            /* 印刷エリアだけを表示し、画面全体に広げる */
+            #app-screen { visibility: visible; position: absolute; left: 0; top: 0; width: 100%; }
+            #view-report { visibility: visible; position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; max-width: none; border: none; box-shadow: none; }
             #print-area, #print-area * { visibility: visible; }
-            #print-area { position: absolute; left: 0; top: 0; width: 100vw; margin: 0; padding: 0; }
-            @page { size: A4 landscape; margin: 10mm; }
+            
+            #print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 297mm;  /* A4横の幅 */
+                height: 209mm; /* A4横の高さ */
+                margin: 0;
+                padding: 10mm; /* 紙の余白（1cm） */
+                box-sizing: border-box;
+                background-color: white !important;
+                border: none !important;
+                box-shadow: none !important;
+            }
+
+            /* 背景色（黒い帯や土日のグレー）を印刷時に消さないためのおまじない */
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
             .no-print { display: none !important; }
         }
+
         .fade-in { animation: fadeIn 0.3s ease-in; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
@@ -31,7 +68,8 @@
             </p>
             <div class="space-y-3">
                 <button id="btn-login-google" class="w-full py-4 bg-white border-2 border-slate-200 rounded-2xl font-bold flex items-center justify-center hover:bg-slate-50 transition-colors shadow-sm">
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" class="w-5 h-5 mr-3" alt="Google">
+                    <!-- ★修正：ブロックされない安全なURLからGoogleロゴを読み込みます -->
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" class="w-5 h-5 mr-3" alt="Google">
                     Googleでログイン
                 </button>
             </div>
@@ -67,7 +105,6 @@
                     <span id="btn-record-text" class="text-3xl font-black tracking-wider">記録</span>
                 </button>
                 <div id="status-msg" class="mt-6 flex items-center justify-center font-bold opacity-0 transition-opacity duration-300">
-                    <!-- メッセージ表示エリア -->
                 </div>
             </div>
 
@@ -85,11 +122,15 @@
                     <input type="date" id="input-start-date" class="border border-slate-300 p-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 <div class="flex space-x-3">
-                    <button id="btn-print" class="px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold transition-colors">印刷</button>
+                    <button id="btn-print" class="px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold transition-colors">印刷する</button>
                     <button id="btn-reset" class="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold transition-colors">リセット</button>
                 </div>
             </div>
-            <div id="print-area" class="bg-white p-10 border rounded shadow-sm overflow-x-auto">
+            <div class="bg-white border-2 border-slate-200 rounded-lg shadow-sm overflow-hidden no-print">
+                <div class="p-2 bg-slate-100 border-b border-slate-200 text-center text-xs font-bold text-slate-500">▼ PCでの印刷プレビュー（A4横比率） ▼</div>
+                <!-- 印刷対象エリア -->
+                <div id="print-area" class="bg-white p-4 sm:p-8">
+                </div>
             </div>
         </main>
     </div>
@@ -155,9 +196,6 @@
                 logs.sort((a, b) => a.timestamp - b.timestamp);
                 updateLogList();
                 renderCalendar();
-            }, (error) => {
-                console.error("データ取得エラー:", error);
-                alert("【読み込みエラー】データの取得に失敗しました。\n詳細: " + error.message);
             });
 
             const settingsRef = doc(db, 'artifacts', myAppId, 'users', uid, 'settings', 'report_config');
@@ -170,20 +208,15 @@
                     document.getElementById('input-start-date').value = new Date().toISOString().split('T')[0];
                 }
                 renderCalendar();
-            }, (error) => {
-                console.error("設定取得エラー:", error);
             });
         }
 
-        // ★修正箇所：タイムアウト処理を追加し、ボタンの表示を切り替えます
         document.getElementById('btn-record').addEventListener('click', async () => {
             if (!currentUser) return;
-            
             const btn = document.getElementById('btn-record');
             const btnText = document.getElementById('btn-record-text');
             const statusMsg = document.getElementById('status-msg');
             
-            // ボタンを「保存中」に変える
             btn.disabled = true;
             btn.classList.add('opacity-50');
             btnText.innerText = '保存中...';
@@ -191,35 +224,20 @@
             try {
                 const now = new Date();
                 const logsRef = collection(db, 'artifacts', myAppId, 'users', currentUser.uid, 'logs');
-                
-                // Firestoreへの書き込み処理
-                const savePromise = addDoc(logsRef, {
+                await addDoc(logsRef, {
                     timestamp: now.getTime(),
                     dateStr: now.toISOString().split('T')[0]
                 });
                 
-                // 10秒のタイムアウトタイマー
-                const timeoutPromise = new Promise((_, reject) => {
-                    setTimeout(() => reject(new Error("10秒以上応答がありません。通信がブロックされている可能性があります。Wi-Fiを切るか、別のブラウザで試してください。")), 10000);
-                });
-                
-                // どちらか早い方を実行
-                await Promise.race([savePromise, timeoutPromise]);
-
-                // 成功した時の処理
                 statusMsg.innerHTML = '<svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>クラウドに保存しました！';
                 statusMsg.className = 'mt-6 flex items-center justify-center font-bold text-green-600 opacity-100 animate-bounce transition-opacity duration-300';
-                
                 setTimeout(() => {
                     statusMsg.classList.remove('opacity-100', 'animate-bounce');
                     statusMsg.classList.add('opacity-0');
                 }, 3000);
-                
             } catch (error) {
-                // 失敗した時の処理（ポップアップを出す）
-                alert("【保存エラー】\n記録に失敗しました。\n\n詳細:\n" + error.message);
+                alert("保存エラー: " + error.message);
             } finally {
-                // ボタンを元の「記録」に戻す
                 btn.disabled = false;
                 btn.classList.remove('opacity-50');
                 btnText.innerText = '記録';
@@ -238,9 +256,9 @@
                 const lastDayStr = lastDay.toISOString().split('T')[0];
                 const settingsRef = doc(db, 'artifacts', myAppId, 'users', currentUser.uid, 'settings', 'report_config');
                 await setDoc(settingsRef, { lastResetDate: lastDayStr }, { merge: true });
-                alert('次回開始日をクラウドに保存しました。');
+                alert('次回開始日を保存しました。');
             } catch (error) {
-                alert("【設定保存エラー】\n保存に失敗しました。\n詳細: " + error.message);
+                alert("保存エラー: " + error.message);
             }
         });
 
@@ -263,7 +281,11 @@
         });
 
         document.getElementById('input-start-date').addEventListener('change', renderCalendar);
-        document.getElementById('btn-print').addEventListener('click', () => window.print());
+        
+        // ★修正：印刷ボタンを押した時、少しだけ待ってから印刷画面を出すことで崩れを防ぐ
+        document.getElementById('btn-print').addEventListener('click', () => {
+            setTimeout(() => { window.print(); }, 100);
+        });
 
         function updateLogList() {
             const logList = document.getElementById('log-list');
@@ -303,9 +325,10 @@
             const yearDisp = monday.getFullYear();
             const weekdays = ['月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日', '日曜日'];
 
+            // ★修正：高さ(height: 100%)を駆使して、A4の紙全体を使い切るレイアウトに変更
             let html = `
-                <div class="min-w-[900px] text-black">
-                    <div class="flex items-end mb-6 border-b-2 border-black pb-4 font-serif">
+                <div class="w-full h-full flex flex-col text-black bg-white">
+                    <div class="flex items-end mb-2 border-b-2 border-black pb-2 font-serif shrink-0">
                         <div class="flex items-center space-x-8">
                             <div class="text-2xl font-bold tracking-widest uppercase italic">GILEAD</div>
                             <div class="text-xl">
@@ -314,10 +337,10 @@
                             </div>
                         </div>
                     </div>
-                    <table class="w-full border-collapse border-2 border-black">
+                    <table class="w-full flex-grow border-collapse border-2 border-black" style="table-layout: fixed; height: 100%;">
                         <thead>
-                            <tr class="bg-black text-white">
-                                ${weekdays.map(w => `<th class="border border-black py-1 px-2 font-normal text-center w-1/7 text-sm">${w}</th>`).join('')}
+                            <tr class="bg-black text-white shrink-0" style="height: 30px;">
+                                ${weekdays.map(w => `<th class="border border-black py-1 px-2 font-normal text-center text-sm">${w}</th>`).join('')}
                             </tr>
                         </thead>
                         <tbody>
@@ -333,18 +356,19 @@
                     const timeStrings = dayLogs.map(l => new Date(l.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})).join(', ');
                     const isWeekend = d === 5 || d === 6;
                     
+                    // 各行の高さを均等に 25% に固定
                     html += `
-                        <td class="border border-black p-0 h-[110px] align-top ${isWeekend ? 'bg-gray-100' : 'bg-white'}">
-                            <div class="p-1.5 h-full flex flex-col">
-                                <div class="font-bold mb-2 text-xs border-b border-dotted border-gray-400 pb-1">1日服用量</div>
-                                <div class="flex-grow flex flex-col justify-end space-y-2">
-                                    <div class="flex">
-                                        <span class="w-8 shrink-0 text-xs">時刻：</span>
-                                        <span class="border-b border-black flex-grow text-lg font-bold font-sans text-center h-7">${timeStrings}</span>
+                        <td class="border border-black p-0 align-top ${isWeekend ? 'bg-gray-100' : 'bg-white'}" style="height: 25%;">
+                            <div class="p-1 h-full flex flex-col">
+                                <div class="font-bold mb-1 text-[10px] border-b border-dotted border-gray-400 pb-0.5">1日服用量</div>
+                                <div class="flex-grow flex flex-col justify-end space-y-1">
+                                    <div class="flex items-end">
+                                        <span class="w-8 shrink-0 text-[10px]">時刻：</span>
+                                        <span class="border-b border-black flex-grow text-lg font-bold font-sans text-center leading-none pb-1">${timeStrings}</span>
                                     </div>
-                                    <div class="flex">
-                                        <span class="w-8 shrink-0 text-xs">日付：</span>
-                                        <span class="border-b border-black flex-grow text-center text-sm font-sans tracking-widest pt-1 h-6">
+                                    <div class="flex items-end mt-1">
+                                        <span class="w-8 shrink-0 text-[10px]">日付：</span>
+                                        <span class="border-b border-black flex-grow text-center text-sm font-sans tracking-widest leading-none pb-0.5">
                                             ${currentDate.getMonth() + 1}/${currentDate.getDate()}
                                         </span>
                                     </div>

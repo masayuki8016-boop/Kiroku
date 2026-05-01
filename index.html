@@ -21,11 +21,11 @@
             /* ページ全体の設定（A4横、余白ゼロ） */
             @page { size: A4 landscape; margin: 0; }
             body { background-color: white; margin: 0; padding: 0; }
+            
+            /* 印刷エリア以外をすべて非表示にする */
             body * { visibility: hidden; }
             
-            /* 印刷エリアだけを表示し、画面全体に広げる */
-            #app-screen { visibility: visible; position: absolute; left: 0; top: 0; width: 100%; }
-            #view-report { visibility: visible; position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 0; max-width: none; border: none; box-shadow: none; }
+            /* 印刷エリアとその中身だけを表示する */
             #print-area, #print-area * { visibility: visible; }
             
             #print-area {
@@ -68,7 +68,6 @@
             </p>
             <div class="space-y-3">
                 <button id="btn-login-google" class="w-full py-4 bg-white border-2 border-slate-200 rounded-2xl font-bold flex items-center justify-center hover:bg-slate-50 transition-colors shadow-sm">
-                    <!-- ★修正：ブロックされない安全なURLからGoogleロゴを読み込みます -->
                     <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg" class="w-5 h-5 mr-3" alt="Google">
                     Googleでログイン
                 </button>
@@ -176,14 +175,18 @@
             }
         });
 
+        // ログインボタンの処理
         document.getElementById('btn-login-google').addEventListener('click', () => {
             signInWithPopup(auth, googleProvider).catch(error => {
                 alert("ログイン処理がキャンセルされたか、エラーが発生しました。\n" + error.message);
             });
         });
 
+        // ★修正：ログアウトボタンの処理（確実にログアウトのみを実行します）
         document.getElementById('btn-logout').addEventListener('click', () => {
-            if(confirm('ログアウトしますか？')) signOut(auth);
+            if (confirm('ログアウトしますか？')) {
+                signOut(auth);
+            }
         });
 
         function loadData() {
@@ -211,6 +214,7 @@
             });
         }
 
+        // 記録ボタンの処理
         document.getElementById('btn-record').addEventListener('click', async () => {
             if (!currentUser) return;
             const btn = document.getElementById('btn-record');
@@ -244,6 +248,7 @@
             }
         });
 
+        // リセットボタンの処理
         document.getElementById('btn-reset').addEventListener('click', async () => {
             if (!currentUser) return;
             if(!confirm('この出力期間を完了とし、次回開始日を更新しますか？\n（記録データは消えません）')) return;
@@ -262,6 +267,7 @@
             }
         });
 
+        // 画面の切り替え処理
         const tabRecord = document.getElementById('tab-record');
         const tabReport = document.getElementById('tab-report');
         const viewRecord = document.getElementById('view-record');
@@ -282,9 +288,9 @@
 
         document.getElementById('input-start-date').addEventListener('change', renderCalendar);
         
-        // ★修正：印刷ボタンを押した時、少しだけ待ってから印刷画面を出すことで崩れを防ぐ
+        // ★修正：印刷ボタンの処理（ブラウザにブロックされないよう直接実行します）
         document.getElementById('btn-print').addEventListener('click', () => {
-            setTimeout(() => { window.print(); }, 100);
+            window.print();
         });
 
         function updateLogList() {
@@ -325,7 +331,6 @@
             const yearDisp = monday.getFullYear();
             const weekdays = ['月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日', '日曜日'];
 
-            // ★修正：高さ(height: 100%)を駆使して、A4の紙全体を使い切るレイアウトに変更
             let html = `
                 <div class="w-full h-full flex flex-col text-black bg-white">
                     <div class="flex items-end mb-2 border-b-2 border-black pb-2 font-serif shrink-0">
@@ -356,7 +361,6 @@
                     const timeStrings = dayLogs.map(l => new Date(l.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})).join(', ');
                     const isWeekend = d === 5 || d === 6;
                     
-                    // 各行の高さを均等に 25% に固定
                     html += `
                         <td class="border border-black p-0 align-top ${isWeekend ? 'bg-gray-100' : 'bg-white'}" style="height: 25%;">
                             <div class="p-1 h-full flex flex-col">

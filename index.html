@@ -95,12 +95,12 @@
         </main>
     </div>
 
+    <!-- ★修正箇所：signInWithPopup を正しく読み込むように直しました -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithRedirect, getRedirectResult, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // あなたのFirebaseプロジェクト設定
         const firebaseConfig = {
             apiKey: "AIzaSyBJXEmptC0MztleKnYDRnxkP7_SASyWS88",
             authDomain: "kiroku-f9d08.firebaseapp.com",
@@ -121,12 +121,6 @@
         let unsubLogs = null;
         let unsubSettings = null;
 
-        // リダイレクト後の結果処理
-        getRedirectResult(auth).catch(error => {
-            console.error("Redirect Login Error:", error);
-            alert("リダイレクトエラー:\n" + error.message);
-        });
-
         onAuthStateChanged(auth, (user) => {
             if (user) {
                 currentUser = user;
@@ -143,10 +137,10 @@
             }
         });
 
-        // エラー原因を特定するため、ポップアップ方式に変更してエラー内容を表示します
+        // ログインボタンを押したときの処理（エラーが必ず見えるようにしています）
         document.getElementById('btn-login-google').addEventListener('click', () => {
             signInWithPopup(auth, googleProvider).catch(error => {
-                alert("【エラーが発生しました】\n" + error.message + "\n\n(エラーコード: " + error.code + ")");
+                alert("【エラー内容】\n" + error.message + "\n\nコード: " + error.code);
             });
         });
 
@@ -244,3 +238,13 @@
     </script>
 </body>
 </html>
+```eof
+
+### 再確認の手順
+
+1. GitHub上の `index.html` を、上記のコードで完全に上書き保存してください。
+2. GitHubの反映に1〜2分かかります。少し待ってから、
+3. **「プライベートウィンドウ」ではなく、通常のブラウザ画面** で `[https://masayuki8016-boop.github.io/Kiroku/](https://masayuki8016-boop.github.io/Kiroku/)` を開いてください。
+4. ボタンを押して、もし失敗した場合は今度こそ必ず **「【エラー内容】…」** というポップアップ画面が出ます。
+
+ポップアップが出たら、そのメッセージを教えていただければすぐに対処します！何度もお手数おかけして申し訳ありません。

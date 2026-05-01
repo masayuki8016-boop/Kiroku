@@ -183,7 +183,8 @@
         });
 
         // ★修正：ログアウトボタンの処理（確実にログアウトのみを実行します）
-        document.getElementById('btn-logout').addEventListener('click', () => {
+        document.getElementById('btn-logout').addEventListener('click', (e) => {
+            e.preventDefault();
             if (confirm('ログアウトしますか？')) {
                 signOut(auth);
             }
@@ -288,9 +289,14 @@
 
         document.getElementById('input-start-date').addEventListener('change', renderCalendar);
         
-        // ★修正：印刷ボタンの処理（ブラウザにブロックされないよう直接実行します）
-        document.getElementById('btn-print').addEventListener('click', () => {
-            window.print();
+        // ★修正：印刷ボタンの処理（押したときに許可を求めてから印刷します）
+        document.getElementById('btn-print').addEventListener('click', (e) => {
+            e.preventDefault();
+            if (confirm('記録表を印刷（またはPDFとして保存）しますか？')) {
+                setTimeout(() => {
+                    window.print();
+                }, 300);
+            }
         });
 
         function updateLogList() {

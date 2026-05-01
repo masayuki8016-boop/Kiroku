@@ -3,85 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>服薬記録アプリ (診断モード)</title>
+    <title>服薬記録アプリ (クラウド同期)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        @media print {
+            body * { visibility: hidden; }
+            #print-area, #print-area * { visibility: visible; }
+            #print-area { position: absolute; left: 0; top: 0; width: 100vw; margin: 0; padding: 0; }
+            @page { size: A4 landscape; margin: 10mm; }
+            .no-print { display: none !important; }
+        }
         .fade-in { animation: fadeIn 0.3s ease-in; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
-    <!-- ★診断用：裏側で起きたエラーを強制的に画面に表示します -->
-    <script>
-        window.addEventListener('error', function(event) {
-            const debugArea = document.getElementById('debug-area');
-            if(debugArea) {
-                debugArea.classList.remove('hidden');
-                debugArea.innerText += '\n【システムエラー】\n' + event.message;
-            } else {
-                alert("致命的なエラー:\n" + event.message);
-            }
-        });
-        window.addEventListener('unhandledrejection', function(event) {
-            const debugArea = document.getElementById('debug-area');
-            if(debugArea) {
-                debugArea.classList.remove('hidden');
-                debugArea.innerText += '\n【通信エラー】\n' + event.reason;
-            }
-        });
-    </script>
 </head>
 <body class="bg-slate-50 text-slate-800 font-sans min-h-screen">
-
-    <!-- エラー表示エリア（通常は隠れています） -->
-    <div id="debug-area" class="hidden m-4 p-4 bg-red-100 border border-red-500 text-red-700 font-bold whitespace-pre-wrap rounded break-all text-xs z-50 relative"></div>
 
     <!-- ログイン画面 -->
     <div id="login-screen" class="min-h-screen flex items-center justify-center p-4 fade-in">
         <div class="max-w-md w-full bg-white p-8 rounded-3xl shadow-xl text-center space-y-6 border border-slate-100">
+            <div class="w-20 h-20 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center text-white shadow-lg shadow-blue-200 mb-4">
+                <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
             <h1 class="text-2xl font-bold text-slate-800">服薬記録アプリ</h1>
             <p class="text-slate-500 text-sm leading-relaxed">
-                ボタンを押して無反応の場合は、画面上部に赤いエラーが出ていないか確認してください。
+                データはクラウドに安全に保存されます。<br>機種変更しても、同じアカウントでログインすればデータを引き継げます。
             </p>
             <div class="space-y-3">
-                <button id="btn-login-google" class="w-full py-4 bg-white border-2 border-slate-200 rounded-2xl font-bold flex items-center justify-center hover:bg-slate-50 transition-colors shadow-sm" onclick="checkClick()">
-                    <!-- 画像が読み込めない場合は「代替テキスト」が表示されます -->
-                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" class="w-5 h-5 mr-3" alt="[Googleロゴ]">
+                <button id="btn-login-google" class="w-full py-4 bg-white border-2 border-slate-200 rounded-2xl font-bold flex items-center justify-center hover:bg-slate-50 transition-colors shadow-sm">
+                    <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" class="w-5 h-5 mr-3" alt="Google">
                     Googleでログイン
                 </button>
-            </div>
-            
-            <div class="text-left text-xs text-slate-400 mt-4 border-t pt-4">
-                <p class="font-bold text-slate-500">【よくあるブロックの原因】</p>
-                <ul class="list-disc pl-4 mt-2 space-y-1">
-                    <li>病院・会社・カフェ等の厳しいWi-Fi（Wi-Fiを切って4Gで試してください）</li>
-                    <li>広告ブロックアプリ（AdGuard等）</li>
-                    <li>iPhoneの「サイト越えトラッキングを防ぐ」機能</li>
-                </ul>
             </div>
         </div>
     </div>
 
-    <!-- アプリメイン画面 (省略していますがプログラムとしては存在しています) -->
+    <!-- アプリメイン画面 -->
     <div id="app-screen" class="hidden">
-        <!-- 省略 -->
+        <nav class="bg-white border-b sticky top-0 z-10 no-print shadow-sm">
+            <div class="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span class="font-bold text-lg text-slate-700 hidden sm:block">服薬記録</span>
+                </div>
+                <div class="flex bg-slate-100 p-1 rounded-xl">
+                    <button id="tab-record" class="px-4 py-2 rounded-lg text-sm font-bold bg-white shadow text-blue-600 transition-all flex items-center">記録</button>
+                    <button id="tab-report" class="px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition-all flex items-center">出力</button>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span id="user-name" class="text-xs font-bold text-slate-500 hidden sm:block"></span>
+                    <button id="btn-logout" class="p-2 text-slate-400 hover:text-red-500 transition-colors" title="ログアウト">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <main id="view-record" class="max-w-md mx-auto p-6 mt-6 space-y-8 fade-in">
+            <div class="bg-white p-8 rounded-3xl shadow-sm border border-slate-200 text-center">
+                <h2 class="text-xl font-bold mb-8 text-slate-700">今の時間を記録します</h2>
+                <button id="btn-record" class="w-56 h-56 mx-auto bg-blue-600 hover:bg-blue-700 active:scale-95 rounded-full flex flex-col items-center justify-center text-white shadow-xl transition-all border-8 border-blue-50">
+                    <svg class="w-16 h-16 mb-2 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <span class="text-3xl font-black tracking-wider">記録</span>
+                </button>
+                <div id="status-msg" class="mt-6 flex items-center justify-center text-green-600 font-bold opacity-0 transition-opacity duration-300">
+                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    クラウドに保存しました！
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 text-left">
+                <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 border-b pb-2">服薬記録</h3>
+                <ul id="log-list" class="space-y-2 max-h-96 overflow-y-auto pr-2">
+                </ul>
+            </div>
+        </main>
+
+        <main id="view-report" class="hidden max-w-6xl mx-auto p-4 mt-6 space-y-6 fade-in">
+            <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4 no-print">
+                <div class="flex items-center space-x-4">
+                    <label class="font-bold text-slate-700 text-sm">出力開始日</label>
+                    <input type="date" id="input-start-date" class="border border-slate-300 p-2 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div class="flex space-x-3">
+                    <button id="btn-print" class="px-6 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-xl font-bold transition-colors">印刷</button>
+                    <button id="btn-reset" class="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-bold transition-colors">リセット</button>
+                </div>
+            </div>
+            <div id="print-area" class="bg-white p-10 border rounded shadow-sm overflow-x-auto">
+            </div>
+        </main>
     </div>
 
-    <!-- プログラムが動いているか確認用の仮の処理 -->
-    <script>
-        function checkClick() {
-            // プログラムの読み込みが成功していれば、この関数は上書きされます。
-            // これが表示されるなら、Firebaseのプログラムがブロックされて読み込めていません。
-            alert("ボタンは押せましたが、Googleの通信プログラムがブロックされているためログインに進めません。\nWi-Fiを切るか、別のブラウザを試してください。");
-        }
-    </script>
-
-    <!-- Firebaseのプログラム読み込み -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // ★修正完了：正しいAPIキーに書き換えました
         const firebaseConfig = {
-            apiKey: "AIzaSyBJXEmptC0MztleKnYDRnxkP7_SASyWS88",
+            apiKey: "AIzaSyBJXeMptC0MztleKnYDRnxkP7_SASyWS88",
             authDomain: "kiroku-f9d08.firebaseapp.com",
             projectId: "kiroku-f9d08",
             storageBucket: "kiroku-f9d08.firebasestorage.app",
@@ -93,22 +114,209 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
         const googleProvider = new GoogleAuthProvider();
+        const myAppId = 'medlog-app-custom';
 
-        // 正常に読み込めたら、ボタンの挙動を本番用に上書きする
-        document.getElementById('btn-login-google').onclick = null;
-        document.getElementById('btn-login-google').addEventListener('click', () => {
-            signInWithPopup(auth, googleProvider).catch(error => {
-                const debugArea = document.getElementById('debug-area');
-                debugArea.classList.remove('hidden');
-                debugArea.innerText = "【ログインエラー】\n" + error.message + "\n\nコード: " + error.code;
-            });
-        });
+        let currentUser = null;
+        let logs = [];
+        let unsubLogs = null;
+        let unsubSettings = null;
 
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                alert("ログインに成功しました！");
+                currentUser = user;
+                document.getElementById('login-screen').classList.add('hidden');
+                document.getElementById('app-screen').classList.remove('hidden');
+                document.getElementById('user-name').innerText = user.displayName ? `${user.displayName} さん` : 'ユーザー';
+                loadData();
+            } else {
+                currentUser = null;
+                document.getElementById('login-screen').classList.remove('hidden');
+                document.getElementById('app-screen').classList.add('hidden');
+                if (unsubLogs) unsubLogs();
+                if (unsubSettings) unsubSettings();
             }
         });
+
+        document.getElementById('btn-login-google').addEventListener('click', () => {
+            signInWithPopup(auth, googleProvider).catch(error => {
+                alert("ログイン処理がキャンセルされたか、エラーが発生しました。\n" + error.message);
+            });
+        });
+
+        document.getElementById('btn-logout').addEventListener('click', () => {
+            if(confirm('ログアウトしますか？')) signOut(auth);
+        });
+
+        function loadData() {
+            if (!currentUser) return;
+            const uid = currentUser.uid;
+            
+            const logsRef = collection(db, 'artifacts', myAppId, 'users', uid, 'logs');
+            unsubLogs = onSnapshot(logsRef, (snapshot) => {
+                logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                logs.sort((a, b) => a.timestamp - b.timestamp);
+                updateLogList();
+                renderCalendar();
+            });
+
+            const settingsRef = doc(db, 'artifacts', myAppId, 'users', uid, 'settings', 'report_config');
+            unsubSettings = onSnapshot(settingsRef, (docSnap) => {
+                if (docSnap.exists() && docSnap.data().lastResetDate) {
+                    let nextDate = new Date(docSnap.data().lastResetDate);
+                    nextDate.setDate(nextDate.getDate() + 1);
+                    document.getElementById('input-start-date').value = nextDate.toISOString().split('T')[0];
+                } else {
+                    document.getElementById('input-start-date').value = new Date().toISOString().split('T')[0];
+                }
+                renderCalendar();
+            });
+        }
+
+        document.getElementById('btn-record').addEventListener('click', async () => {
+            if (!currentUser) return;
+            const now = new Date();
+            const logsRef = collection(db, 'artifacts', myAppId, 'users', currentUser.uid, 'logs');
+            await addDoc(logsRef, {
+                timestamp: now.getTime(),
+                dateStr: now.toISOString().split('T')[0]
+            });
+            const statusMsg = document.getElementById('status-msg');
+            statusMsg.classList.remove('opacity-0');
+            statusMsg.classList.add('opacity-100', 'animate-bounce');
+            setTimeout(() => {
+                statusMsg.classList.remove('opacity-100', 'animate-bounce');
+                statusMsg.classList.add('opacity-0');
+            }, 3000);
+        });
+
+        document.getElementById('btn-reset').addEventListener('click', async () => {
+            if (!currentUser) return;
+            if(!confirm('この出力期間を完了とし、次回開始日を更新しますか？\n（記録データは消えません）')) return;
+            const startStr = document.getElementById('input-start-date').value;
+            const start = new Date(startStr);
+            const day = start.getDay();
+            const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+            const lastDay = new Date(new Date(start).setDate(diff + 27));
+            const lastDayStr = lastDay.toISOString().split('T')[0];
+            const settingsRef = doc(db, 'artifacts', myAppId, 'users', currentUser.uid, 'settings', 'report_config');
+            await setDoc(settingsRef, { lastResetDate: lastDayStr }, { merge: true });
+            alert('次回開始日をクラウドに保存しました。');
+        });
+
+        const tabRecord = document.getElementById('tab-record');
+        const tabReport = document.getElementById('tab-report');
+        const viewRecord = document.getElementById('view-record');
+        const viewReport = document.getElementById('view-report');
+        
+        tabRecord.addEventListener('click', () => {
+            viewRecord.classList.remove('hidden'); viewReport.classList.add('hidden');
+            tabRecord.className = "px-4 py-2 rounded-lg text-sm font-bold bg-white shadow text-blue-600 transition-all flex items-center";
+            tabReport.className = "px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition-all flex items-center";
+        });
+
+        tabReport.addEventListener('click', () => {
+            viewReport.classList.remove('hidden'); viewRecord.classList.add('hidden');
+            tabReport.className = "px-4 py-2 rounded-lg text-sm font-bold bg-white shadow text-blue-600 transition-all flex items-center";
+            tabRecord.className = "px-4 py-2 rounded-lg text-sm font-bold text-slate-500 hover:text-slate-700 transition-all flex items-center";
+            renderCalendar();
+        });
+
+        document.getElementById('input-start-date').addEventListener('change', renderCalendar);
+        document.getElementById('btn-print').addEventListener('click', () => window.print());
+
+        function updateLogList() {
+            const logList = document.getElementById('log-list');
+            if (logs.length === 0) {
+                logList.innerHTML = '<li class="text-slate-400 text-sm text-center py-4">記録がありません</li>';
+                return;
+            }
+            const allLogs = [...logs].reverse();
+            const todayStr = new Date().toISOString().split('T')[0];
+            logList.innerHTML = allLogs.map(log => {
+                const d = new Date(log.timestamp);
+                const isToday = log.dateStr === todayStr;
+                const bgClass = isToday ? 'bg-blue-100 border-blue-300 shadow-sm' : 'bg-slate-50 border-slate-100';
+                const dateTextClass = isToday ? 'text-blue-800 font-bold' : 'text-slate-600 font-medium';
+                return `
+                    <li class="flex justify-between items-center p-3 rounded-xl border ${bgClass}">
+                        <span class="${dateTextClass}">${d.toLocaleDateString()}${isToday ? ' (今日)' : ''}</span>
+                        <span class="font-black text-blue-600 text-lg">${d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                    </li>
+                `;
+            }).join('');
+        }
+
+        function renderCalendar() {
+            const startStr = document.getElementById('input-start-date').value;
+            if (!startStr) return;
+            const start = new Date(startStr);
+            const day = start.getDay();
+            const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+            const monday = new Date(new Date(start).setDate(diff));
+            const day28 = new Date(monday);
+            day28.setDate(monday.getDate() + 27);
+            
+            const m1 = monday.getMonth() + 1;
+            const m2 = day28.getMonth() + 1;
+            const monthDisp = m1 === m2 ? m1 : `${m1}-${m2}`;
+            const yearDisp = monday.getFullYear();
+            const weekdays = ['月曜日', '火曜日', '水曜日', '木曜日', '金曜日', '土曜日', '日曜日'];
+
+            let html = `
+                <div class="min-w-[900px] text-black">
+                    <div class="flex items-end mb-6 border-b-2 border-black pb-4 font-serif">
+                        <div class="flex items-center space-x-8">
+                            <div class="text-2xl font-bold tracking-widest uppercase italic">GILEAD</div>
+                            <div class="text-xl">
+                                <span class="border-b border-black w-16 inline-block text-center mr-1 font-sans font-bold">${monthDisp}</span>月
+                                <span class="border-b border-black w-24 inline-block text-center ml-4 mr-1 font-sans font-bold">${yearDisp}</span>年
+                            </div>
+                        </div>
+                    </div>
+                    <table class="w-full border-collapse border-2 border-black">
+                        <thead>
+                            <tr class="bg-black text-white">
+                                ${weekdays.map(w => `<th class="border border-black py-1 px-2 font-normal text-center w-1/7 text-sm">${w}</th>`).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+
+            for (let w = 0; w < 4; w++) {
+                html += '<tr>';
+                for (let d = 0; d < 7; d++) {
+                    const currentDate = new Date(monday);
+                    currentDate.setDate(monday.getDate() + (w * 7 + d));
+                    const dateStr = currentDate.toISOString().split('T')[0];
+                    const dayLogs = logs.filter(l => l.dateStr === dateStr);
+                    const timeStrings = dayLogs.map(l => new Date(l.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})).join(', ');
+                    const isWeekend = d === 5 || d === 6;
+                    
+                    html += `
+                        <td class="border border-black p-0 h-[110px] align-top ${isWeekend ? 'bg-gray-100' : 'bg-white'}">
+                            <div class="p-1.5 h-full flex flex-col">
+                                <div class="font-bold mb-2 text-xs border-b border-dotted border-gray-400 pb-1">1日服用量</div>
+                                <div class="flex-grow flex flex-col justify-end space-y-2">
+                                    <div class="flex">
+                                        <span class="w-8 shrink-0 text-xs">時刻：</span>
+                                        <span class="border-b border-black flex-grow text-lg font-bold font-sans text-center h-7">${timeStrings}</span>
+                                    </div>
+                                    <div class="flex">
+                                        <span class="w-8 shrink-0 text-xs">日付：</span>
+                                        <span class="border-b border-black flex-grow text-center text-sm font-sans tracking-widest pt-1 h-6">
+                                            ${currentDate.getMonth() + 1}/${currentDate.getDate()}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    `;
+                }
+                html += '</tr>';
+            }
+            html += '</tbody></table></div>';
+            document.getElementById('print-area').innerHTML = html;
+        }
     </script>
 </body>
 </html>

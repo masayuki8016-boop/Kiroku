@@ -157,6 +157,10 @@
                 logs.sort((a, b) => a.timestamp - b.timestamp);
                 updateLogList();
                 renderCalendar();
+            }, (error) => {
+                // データ読み込みエラー時
+                console.error("データ取得エラー:", error);
+                alert("【読み込みエラー】\nデータの取得に失敗しました。\nFirebaseの「Firestore Database」のルール設定を確認してください。\n" + error.message);
             });
 
             const settingsRef = doc(db, 'artifacts', myAppId, 'users', uid, 'settings', 'report_config');
@@ -169,38 +173,49 @@
                     document.getElementById('input-start-date').value = new Date().toISOString().split('T')[0];
                 }
                 renderCalendar();
+            }, (error) => {
+                console.error("設定取得エラー:", error);
             });
         }
 
         document.getElementById('btn-record').addEventListener('click', async () => {
             if (!currentUser) return;
-            const now = new Date();
-            const logsRef = collection(db, 'artifacts', myAppId, 'users', currentUser.uid, 'logs');
-            await addDoc(logsRef, {
-                timestamp: now.getTime(),
-                dateStr: now.toISOString().split('T')[0]
-            });
-            const statusMsg = document.getElementById('status-msg');
-            statusMsg.classList.remove('opacity-0');
-            statusMsg.classList.add('opacity-100', 'animate-bounce');
-            setTimeout(() => {
-                statusMsg.classList.remove('opacity-100', 'animate-bounce');
-                statusMsg.classList.add('opacity-0');
-            }, 3000);
+            try {
+                const now = new Date();
+                const logsRef = collection(db, 'artifacts', myAppId, 'users', currentUser.uid, 'logs');
+                await addDoc(logsRef, {
+                    timestamp: now.getTime(),
+                    dateStr: now.toISOString().split('T')[0]
+                });
+                const statusMsg = document.getElementById('status-msg');
+                statusMsg.classList.remove('opacity-0');
+                statusMsg.classList.add('opacity-100', 'animate-bounce');
+                setTimeout(() => {
+                    statusMsg.classList.remove('opacity-100', 'animate-bounce');
+                    statusMsg.classList.add('opacity-0');
+                }, 3000);
+            } catch (error) {
+                // 記録失敗時にポップアップを出す
+                alert("【保存エラー】\n記録に失敗しました。\nFirebaseの「Firestore Database」のルール設定を確認してください。\n" + error.message);
+            }
         });
 
         document.getElementById('btn-reset').addEventListener('click', async () => {
             if (!currentUser) return;
             if(!confirm('この出力期間を完了とし、次回開始日を更新しますか？\n（記録データは消えません）')) return;
-            const startStr = document.getElementById('input-start-date').value;
-            const start = new Date(startStr);
-            const day = start.getDay();
-            const diff = start.getDate() - day + (day === 0 ? -6 : 1);
-            const lastDay = new Date(new Date(start).setDate(diff + 27));
-            const lastDayStr = lastDay.toISOString().split('T')[0];
-            const settingsRef = doc(db, 'artifacts', myAppId, 'users', currentUser.uid, 'settings', 'report_config');
-            await setDoc(settingsRef, { lastResetDate: lastDayStr }, { merge: true });
-            alert('次回開始日をクラウドに保存しました。');
+            try {
+                const startStr = document.getElementById('input-start-date').value;
+                const start = new Date(startStr);
+                const day = start.getDay();
+                const diff = start.getDate() - day + (day === 0 ? -6 : 1);
+                const lastDay = new Date(new Date(start).setDate(diff + 27));
+                const lastDayStr = lastDay.toISOString().split('T')[0];
+                const settingsRef = doc(db, 'artifacts', myAppId, 'users', currentUser.uid, 'settings', 'report_config');
+                await setDoc(settingsRef, { lastResetDate: lastDayStr }, { merge: true });
+                alert('次回開始日をクラウドに保存しました。');
+            } catch (error) {
+                alert("【設定保存エラー】\n保存に失敗しました。\nFirebaseの「Firestore Database」のルール設定を確認してください。\n" + error.message);
+            }
         });
 
         const tabRecord = document.getElementById('tab-record');

@@ -64,11 +64,10 @@
                 <h2 class="text-xl font-bold mb-8 text-slate-700">今の時間を記録します</h2>
                 <button id="btn-record" class="w-56 h-56 mx-auto bg-blue-600 hover:bg-blue-700 active:scale-95 rounded-full flex flex-col items-center justify-center text-white shadow-xl transition-all border-8 border-blue-50">
                     <svg class="w-16 h-16 mb-2 opacity-90" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-                    <span class="text-3xl font-black tracking-wider">記録</span>
+                    <span id="btn-record-text" class="text-3xl font-black tracking-wider">記録</span>
                 </button>
-                <div id="status-msg" class="mt-6 flex items-center justify-center text-green-600 font-bold opacity-0 transition-opacity duration-300">
-                    <svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-                    クラウドに保存しました！
+                <div id="status-msg" class="mt-6 flex items-center justify-center font-bold opacity-0 transition-opacity duration-300">
+                    <!-- メッセージ表示エリア -->
                 </div>
             </div>
 
@@ -100,7 +99,6 @@
         import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, collection, addDoc, onSnapshot, doc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // ★修正完了：正しいAPIキーに書き換えました
         const firebaseConfig = {
             apiKey: "AIzaSyBJXeMptC0MztleKnYDRnxkP7_SASyWS88",
             authDomain: "kiroku-f9d08.firebaseapp.com",
@@ -158,9 +156,8 @@
                 updateLogList();
                 renderCalendar();
             }, (error) => {
-                // データ読み込みエラー時
                 console.error("データ取得エラー:", error);
-                alert("【読み込みエラー】\nデータの取得に失敗しました。\nFirebaseの「Firestore Database」のルール設定を確認してください。\n" + error.message);
+                alert("【読み込みエラー】データの取得に失敗しました。\n詳細: " + error.message);
             });
 
             const settingsRef = doc(db, 'artifacts', myAppId, 'users', uid, 'settings', 'report_config');
@@ -178,25 +175,54 @@
             });
         }
 
+        // ★修正箇所：タイムアウト処理を追加し、ボタンの表示を切り替えます
         document.getElementById('btn-record').addEventListener('click', async () => {
             if (!currentUser) return;
+            
+            const btn = document.getElementById('btn-record');
+            const btnText = document.getElementById('btn-record-text');
+            const statusMsg = document.getElementById('status-msg');
+            
+            // ボタンを「保存中」に変える
+            btn.disabled = true;
+            btn.classList.add('opacity-50');
+            btnText.innerText = '保存中...';
+            
             try {
                 const now = new Date();
                 const logsRef = collection(db, 'artifacts', myAppId, 'users', currentUser.uid, 'logs');
-                await addDoc(logsRef, {
+                
+                // Firestoreへの書き込み処理
+                const savePromise = addDoc(logsRef, {
                     timestamp: now.getTime(),
                     dateStr: now.toISOString().split('T')[0]
                 });
-                const statusMsg = document.getElementById('status-msg');
-                statusMsg.classList.remove('opacity-0');
-                statusMsg.classList.add('opacity-100', 'animate-bounce');
+                
+                // 10秒のタイムアウトタイマー
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error("10秒以上応答がありません。通信がブロックされている可能性があります。Wi-Fiを切るか、別のブラウザで試してください。")), 10000);
+                });
+                
+                // どちらか早い方を実行
+                await Promise.race([savePromise, timeoutPromise]);
+
+                // 成功した時の処理
+                statusMsg.innerHTML = '<svg class="w-5 h-5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>クラウドに保存しました！';
+                statusMsg.className = 'mt-6 flex items-center justify-center font-bold text-green-600 opacity-100 animate-bounce transition-opacity duration-300';
+                
                 setTimeout(() => {
                     statusMsg.classList.remove('opacity-100', 'animate-bounce');
                     statusMsg.classList.add('opacity-0');
                 }, 3000);
+                
             } catch (error) {
-                // 記録失敗時にポップアップを出す
-                alert("【保存エラー】\n記録に失敗しました。\nFirebaseの「Firestore Database」のルール設定を確認してください。\n" + error.message);
+                // 失敗した時の処理（ポップアップを出す）
+                alert("【保存エラー】\n記録に失敗しました。\n\n詳細:\n" + error.message);
+            } finally {
+                // ボタンを元の「記録」に戻す
+                btn.disabled = false;
+                btn.classList.remove('opacity-50');
+                btnText.innerText = '記録';
             }
         });
 
@@ -214,7 +240,7 @@
                 await setDoc(settingsRef, { lastResetDate: lastDayStr }, { merge: true });
                 alert('次回開始日をクラウドに保存しました。');
             } catch (error) {
-                alert("【設定保存エラー】\n保存に失敗しました。\nFirebaseの「Firestore Database」のルール設定を確認してください。\n" + error.message);
+                alert("【設定保存エラー】\n保存に失敗しました。\n詳細: " + error.message);
             }
         });
 

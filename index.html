@@ -59,8 +59,8 @@
         </div>
 
         <div class="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 text-left">
-            <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 border-b pb-2">最近の記録</h3>
-            <ul id="log-list" class="space-y-2">
+            <h3 class="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 border-b pb-2">服薬記録</h3>
+            <ul id="log-list" class="space-y-2 max-h-96 overflow-y-auto pr-2">
                 <!-- Javascriptで履歴が入ります -->
             </ul>
         </div>
@@ -172,13 +172,21 @@
                 return;
             }
             
-            // 直近5件を取得して新しい順に表示
-            const recentLogs = [...logs].reverse().slice(0, 5);
-            logList.innerHTML = recentLogs.map(log => {
+            // すべての記録を新しい順に表示
+            const allLogs = [...logs].reverse();
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            logList.innerHTML = allLogs.map(log => {
                 const d = new Date(log.timestamp);
+                const isToday = log.dateStr === todayStr;
+                
+                // 当日の記録は青系の背景でハイライト
+                const bgClass = isToday ? 'bg-blue-100 border-blue-300 shadow-sm' : 'bg-slate-50 border-slate-100';
+                const dateTextClass = isToday ? 'text-blue-800 font-bold' : 'text-slate-600 font-medium';
+
                 return `
-                    <li class="flex justify-between items-center p-3 bg-slate-50 rounded-xl border border-slate-100">
-                        <span class="font-medium text-slate-600">${d.toLocaleDateString()}</span>
+                    <li class="flex justify-between items-center p-3 rounded-xl border ${bgClass}">
+                        <span class="${dateTextClass}">${d.toLocaleDateString()}${isToday ? ' (今日)' : ''}</span>
                         <span class="font-black text-blue-600 text-lg">${d.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
                     </li>
                 `;
